@@ -160,48 +160,36 @@ export default function DashboardPage() {
           <>
             {/* KPI Cards */}
             <section className="mb-8">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 <KPICard
                   title="Total Users"
                   value={data.kpis.totalUsers.toLocaleString()}
                   icon={<Icons.Users />}
                   color="blue"
-                  trend={{ value: 12.5, isPositive: true }}
                 />
                 <KPICard
-                  title="Page Views"
-                  value={data.kpis.pageViews.toLocaleString()}
-                  icon={<Icons.Eye />}
-                  color="purple"
-                  trend={{ value: 8.2, isPositive: true }}
-                />
-                <KPICard
-                  title="Presale CTR"
-                  value={`${data.kpis.presaleCTR}%`}
-                  icon={<Icons.Cursor />}
+                  title="Active Users"
+                  value={data.kpis.activeUsers.toLocaleString()}
+                  icon={<Icons.Users />}
                   color="green"
-                  trend={{ value: 3.1, isPositive: true }}
                 />
                 <KPICard
-                  title="Newsletter Conv."
-                  value={`${data.kpis.newsletterConversion}%`}
-                  icon={<Icons.Mail />}
-                  color="amber"
-                  trend={{ value: 1.2, isPositive: false }}
+                  title="New Users"
+                  value={data.kpis.newUsers.toLocaleString()}
+                  icon={<Icons.Users />}
+                  color="purple"
                 />
                 <KPICard
-                  title="Avg. Session"
+                  title="Avg. Interaction Duration"
                   value={formatDuration(data.kpis.avgSessionDuration)}
                   icon={<Icons.Clock />}
-                  color="blue"
-                  trend={{ value: 5.4, isPositive: true }}
+                  color="amber"
                 />
                 <KPICard
-                  title="Bounce Rate"
-                  value={`${data.kpis.bounceRate}%`}
-                  icon={<Icons.Bounce />}
-                  color="red"
-                  trend={{ value: 2.1, isPositive: false }}
+                  title="Number of Events"
+                  value={(data._meta?.totalEvents ?? 0).toLocaleString()}
+                  icon={<Icons.Eye />}
+                  color="blue"
                 />
               </div>
             </section>

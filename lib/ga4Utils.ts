@@ -78,6 +78,7 @@ export async function fetchCoreKPIs(filters: FilterParams) {
     metrics: [
       { name: "totalUsers" },
       { name: "activeUsers" },
+      { name: "newUsers" },
       { name: "screenPageViews" },
       { name: "bounceRate" },
       { name: "averageSessionDuration" },
@@ -94,13 +95,15 @@ export async function fetchCoreKPIs(filters: FilterParams) {
 
   const totalUsers = getMetricValue(row, 0);
   const activeUsers = getMetricValue(row, 1);
-  const pageViews = getMetricValue(row, 2);
-  const bounceRate = getMetricValue(row, 3);
-  const avgSessionDuration = Math.round(getMetricValue(row, 4));
+  const newUsers = getMetricValue(row, 2);
+  const pageViews = getMetricValue(row, 3);
+  const bounceRate = getMetricValue(row, 4);
+  const avgSessionDuration = Math.round(getMetricValue(row, 5));
 
   return {
     totalUsers: Math.round(totalUsers),
     activeUsers: Math.round(activeUsers),
+    newUsers: Math.round(newUsers),
     pageViews: Math.round(pageViews),
     bounceRate: Math.round(bounceRate * 10) / 10,
     avgSessionDuration,
