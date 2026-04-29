@@ -75,6 +75,7 @@ export interface FilterParams {
 export interface GA4KPIs {
   totalUsers: number;
   activeUsers: number;
+  newUsers: number;
   pageViews: number;
   presaleCTR: number;
   shopCTR: number;
