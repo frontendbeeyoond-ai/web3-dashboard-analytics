@@ -1,0 +1,198 @@
+// Analytics Event Types (Original Mock Data Types)
+export type DeviceType = "mobile" | "desktop" | "tablet";
+export type EventName =
+  | "page_view"
+  | "presale_click"
+  | "online_shop_click"
+  | "documents_click"
+  | "newsletter_signup"
+  | "social_click"
+  | "trustpilot_click"
+  | "scroll_depth"
+  | "session_end";
+
+export type TrafficSource =
+  | "google"
+  | "twitter"
+  | "facebook"
+  | "linkedin"
+  | "direct"
+  | "referral";
+
+export type Country =
+  | "United States"
+  | "United Kingdom"
+  | "Germany"
+  | "France"
+  | "Spain"
+  | "Italy"
+  | "Canada"
+  | "Australia"
+  | "Japan"
+  | "Brazil";
+
+export type BrowserType = "Chrome" | "Firefox" | "Safari" | "Edge" | "Opera";
+
+// Original Analytics Event (for mock data compatibility)
+export interface AnalyticsEvent {
+  id: string;
+  event_name: EventName;
+  device_type: DeviceType;
+  country: Country;
+  traffic_source: TrafficSource;
+  campaign_id: string | null;
+  campaign_name: string | null;
+  utm_medium: string | null;
+  page_name: "homepage";
+  page_url: string;
+  timestamp: string;
+  browser_type: BrowserType;
+  page_load_time: number;
+  cta_location?: string;
+  button_text?: string;
+  destination_url?: string;
+  click_location?: string;
+  platform?: string;
+  signup_status?: string;
+  scroll_percentage?: number;
+  session_duration?: number;
+  session_id: string;
+}
+
+// Filter Parameters
+export interface FilterParams {
+  start_date?: string;
+  end_date?: string;
+  device_type?: DeviceType | "all";
+  traffic_source?: TrafficSource | "all";
+  campaign_name?: string | "all";
+  country?: Country | "all";
+}
+
+// ============== GA4 API Types ==============
+
+// KPI Metrics from GA4
+export interface GA4KPIs {
+  totalUsers: number;
+  activeUsers: number;
+  pageViews: number;
+  presaleCTR: number;
+  shopCTR: number;
+  documentsCTR: number;
+  newsletterConversion: number;
+  socialCTR: number;
+  trustpilotCTR: number;
+  bounceRate: number;
+  avgSessionDuration: number;
+}
+
+// Chart Data Types
+export interface ChartDataPoint {
+  date: string;
+  value: number;
+}
+
+export interface DimensionValue {
+  dimension: string;
+  value: number;
+}
+
+// Breakdowns
+export interface SignupStatusBreakdown {
+  status: string;
+  count: number;
+}
+
+export interface SignupLocationBreakdown {
+  location: string;
+  count: number;
+}
+
+export interface SocialPlatformBreakdown {
+  platform: string;
+  count: number;
+}
+
+export interface CountryBreakdown {
+  country: string;
+  sessions: number;
+}
+
+export interface TrafficSourceBreakdown {
+  source: string;
+  sessions: number;
+}
+
+// Scroll Depth Distribution
+export interface ScrollDepthBucket {
+  range: string;
+  percentage: number;
+  count: number;
+}
+
+// Full GA4 Analytics Response
+export interface GA4AnalyticsResponse {
+  kpis: GA4KPIs;
+  events: EventCountData[];
+  charts: {
+    usersOverTime: ChartDataPoint[];
+    scrollDepth: ScrollDepthBucket[];
+    trafficSource: TrafficSourceBreakdown[];
+    country: CountryBreakdown[];
+  };
+  breakdowns: {
+    signupStatus: SignupStatusBreakdown[];
+    signupLocation: SignupLocationBreakdown[];
+    socialPlatform: SocialPlatformBreakdown[];
+  };
+}
+
+// ============== Legacy Types (for backward compatibility) ==============
+
+export interface AnalyticsResponse {
+  events: AnalyticsEvent[];
+  total: number;
+  filtered: number;
+}
+
+export interface AggregatedMetrics {
+  totalUsers: number;
+  pageViews: number;
+  presaleCTR: number;
+  newsletterConversion: number;
+  bounceRate: number;
+  avgSessionDuration: number;
+  scrollDepthDistribution: ScrollDepthBucket[];
+  trafficSourceDistribution: TrafficSourceData[];
+  campaignPerformance: CampaignData[];
+  eventCounts: EventCountData[];
+  funnelData: FunnelStep[];
+}
+
+export interface TrafficSourceData {
+  source: TrafficSource | string;
+  count: number;
+  percentage: number;
+}
+
+export interface CampaignData {
+  name: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  conversions: number;
+  conversionRate: number;
+}
+
+export interface EventCountData {
+  eventName: string;
+  count: number;
+  percentage: number;
+  conversionRate: number;
+}
+
+export interface FunnelStep {
+  step: string;
+  count: number;
+  percentage: number;
+}
