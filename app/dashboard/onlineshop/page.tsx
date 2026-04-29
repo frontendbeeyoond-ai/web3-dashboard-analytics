@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -202,7 +202,7 @@ function BreakdownTable({
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
-export default function OnlineShopAnalyticsPage() {
+function OnlineShopAnalyticsPage() {
   const [data, setData] = useState<OnlineShopAnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

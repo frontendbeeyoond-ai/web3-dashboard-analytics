@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -91,7 +91,7 @@ function EventsOverTimeChart({ data }: { data: { date: string; value: number }[]
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
-export default function TrustpilotAnalyticsPage() {
+function TrustpilotAnalyticsPage() {
   const [data, setData] = useState<TrustpilotAnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
