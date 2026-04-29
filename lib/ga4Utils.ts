@@ -1,5 +1,5 @@
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
-import { FilterParams, NewsletterAnalyticsData } from "@/types/analytics";
+import { FilterParams, NewsletterAnalyticsData, PageViewAnalyticsData, PresaleAnalyticsData } from "@/types/analytics";
 
 // Initialize GA4 client with service account
 let analyticsClient: BetaAnalyticsDataClient | null = null;
@@ -742,5 +742,228 @@ export async function fetchNewsletterDetail(filters: FilterParams): Promise<News
     signupLocation: parseBreakdownRows(locationResult),
     emailBreakdown: parseBreakdownRows(emailResult),
     countryBreakdown: parseBreakdownRows(countryResult).slice(0, 15),
+  };
+}
+
+// Fetch detailed Page View analytics
+export async function fetchPageViewDetail(filters: FilterParams): Promise<PageViewAnalyticsData> {
+  const client = getAnalyticsClient();
+  const propertyId = getPropertyId();
+  const { startDate, endDate } = buildDateRange(filters);
+
+  const pageViewFilter = {
+    filter: {
+      fieldName: "eventName",
+      stringFilter: { matchType: "EXACT" as const, value: "page_view" },
+    },
+  };
+
+  function parseBreakdownRows(result: any): { dimension: string; eventCount: number; totalUsers: number }[] {
+    const rows = result?.[0]?.rows || [];
+    return rows.map((row: any) => ({
+      dimension: row.dimensionValues?.[0]?.value || "unknown",
+      eventCount: parseInt(row.metricValues?.[0]?.value || "0", 10),
+      totalUsers: parseInt(row.metricValues?.[1]?.value || "0", 10),
+    }));
+  }
+
+  const [kpiResult, engagementResult, overTimeResult, countryResult] =
+    await Promise.all([
+      // Core KPIs scoped to page_view events
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        metrics: [
+          { name: "eventCount" },
+          { name: "totalUsers" },
+          { name: "activeUsers" },
+          { name: "sessions" },
+        ],
+        dimensionFilter: pageViewFilter,
+      }),
+      // User engagement metrics (session-level, not scoped to event)
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        metrics: [
+          { name: "engagedSessions" },
+          { name: "engagementRate" },
+          { name: "averageSessionDuration" },
+          { name: "activeUsers" },
+        ],
+      }),
+      // Daily page_view counts over time
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "date" }],
+        metrics: [{ name: "eventCount" }],
+        dimensionFilter: pageViewFilter,
+        orderBys: [{ dimension: { dimensionName: "date" } }],
+      }),
+      // Country breakdown for page_view
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "country" }],
+        metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+        dimensionFilter: pageViewFilter,
+        orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      }),
+    ]);
+
+  // Realtime query is isolated — a synchronous throw or API rejection must not crash the page
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let realtimeResult: any = null;
+  try {
+    const rt = await client.runRealtimeReport({
+      property: `properties/${propertyId}`,
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: pageViewFilter,
+      minuteRanges: [{ name: "last30min", startMinutesAgo: 29, endMinutesAgo: 0 }],
+    });
+    realtimeResult = rt;
+  } catch {
+    // Realtime API unavailable or permission denied — silently fall back to 0
+  }
+
+  const kpiRow = kpiResult?.[0]?.rows?.[0]?.metricValues;
+  const totalEvents = parseInt(kpiRow?.[0]?.value || "0", 10);
+  const totalUsers = parseInt(kpiRow?.[1]?.value || "0", 10);
+  const activeUsers = parseInt(kpiRow?.[2]?.value || "0", 10);
+  const sessions = parseInt(kpiRow?.[3]?.value || "0", 10);
+
+  const engRow = engagementResult?.[0]?.rows?.[0]?.metricValues;
+  const engagedSessions = parseInt(engRow?.[0]?.value || "0", 10);
+  const engagementRate = Math.round(parseFloat(engRow?.[1]?.value || "0") * 1000) / 10;
+  const avgEngagementTimeSec = Math.round(parseFloat(engRow?.[2]?.value || "0"));
+  const engActiveUsers = parseInt(engRow?.[3]?.value || "0", 10);
+  const engagedSessionsPerUser =
+    engActiveUsers > 0 ? Math.round((engagedSessions / engActiveUsers) * 100) / 100 : 0;
+
+  const eventsOverTime = (overTimeResult?.[0]?.rows || []).map((row: any) => ({
+    date: formatDate(row.dimensionValues?.[0]?.value || ""),
+    value: parseInt(row.metricValues?.[0]?.value || "0", 10),
+  }));
+
+  const realtimeRows = realtimeResult?.[0]?.rows || [];
+  const eventsLast30Min = realtimeRows.reduce(
+    (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0", 10),
+    0
+  );
+
+  return {
+    totalEvents,
+    totalUsers,
+    activeUsers,
+    eventsPerActiveUser: activeUsers > 0 ? Math.round((totalEvents / activeUsers) * 10) / 10 : 0,
+    eventsPerSession: sessions > 0 ? Math.round((totalEvents / sessions) * 100) / 100 : 0,
+    sessions,
+    eventsLast30Min,
+    engagedSessions,
+    engagementRate,
+    avgEngagementTimeSec,
+    engagedSessionsPerUser,
+    eventsOverTime,
+    countryBreakdown: parseBreakdownRows(countryResult).slice(0, 15),
+  };
+}
+
+// Fetch detailed Presale Click analytics
+export async function fetchPresaleDetail(filters: FilterParams): Promise<PresaleAnalyticsData> {
+  const client = getAnalyticsClient();
+  const propertyId = getPropertyId();
+  const { startDate, endDate } = buildDateRange(filters);
+
+  const presaleFilter = {
+    filter: {
+      fieldName: "eventName",
+      stringFilter: { matchType: "EXACT" as const, value: "presale_click" },
+    },
+  };
+
+  function parseRows(result: any): { dimension: string; eventCount: number; totalUsers: number }[] {
+    const rows = result?.[0]?.rows || [];
+    return rows.map((row: any) => ({
+      dimension: row.dimensionValues?.[0]?.value || "unknown",
+      eventCount: parseInt(row.metricValues?.[0]?.value || "0", 10),
+      totalUsers: parseInt(row.metricValues?.[1]?.value || "0", 10),
+    }));
+  }
+
+  function customDimReport(dimension: string) {
+    return settle(
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: dimension }],
+        metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+        dimensionFilter: presaleFilter,
+        orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      [null] as any
+    );
+  }
+
+  const [kpiResult, overTimeResult, countryResult, ctaResult, destUrlResult, btnTextResult, presaleDestResult] =
+    await Promise.all([
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        metrics: [
+          { name: "eventCount" },
+          { name: "totalUsers" },
+          { name: "activeUsers" },
+          { name: "sessions" },
+        ],
+        dimensionFilter: presaleFilter,
+      }),
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "date" }],
+        metrics: [{ name: "eventCount" }],
+        dimensionFilter: presaleFilter,
+        orderBys: [{ dimension: { dimensionName: "date" } }],
+      }),
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "country" }],
+        metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+        dimensionFilter: presaleFilter,
+        orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      }),
+      customDimReport("customEvent:cta_location"),
+      customDimReport("customEvent:destination_url"),
+      customDimReport("customEvent:button_text"),
+      customDimReport("customEvent:presale_destination_url"),
+    ]);
+
+  const kpiRow = kpiResult?.[0]?.rows?.[0]?.metricValues;
+  const totalEvents = parseInt(kpiRow?.[0]?.value || "0", 10);
+  const totalUsers = parseInt(kpiRow?.[1]?.value || "0", 10);
+  const activeUsers = parseInt(kpiRow?.[2]?.value || "0", 10);
+  const sessions = parseInt(kpiRow?.[3]?.value || "0", 10);
+
+  const eventsOverTime = (overTimeResult?.[0]?.rows || []).map((row: any) => ({
+    date: formatDate(row.dimensionValues?.[0]?.value || ""),
+    value: parseInt(row.metricValues?.[0]?.value || "0", 10),
+  }));
+
+  return {
+    totalEvents,
+    totalUsers,
+    activeUsers,
+    eventsPerActiveUser: activeUsers > 0 ? Math.round((totalEvents / activeUsers) * 10) / 10 : 0,
+    eventsPerSession: sessions > 0 ? Math.round((totalEvents / sessions) * 100) / 100 : 0,
+    sessions,
+    eventsOverTime,
+    countryBreakdown: parseRows(countryResult).slice(0, 15),
+    ctaLocationBreakdown: parseRows(ctaResult),
+    destinationUrlBreakdown: parseRows(destUrlResult),
+    buttonTextBreakdown: parseRows(btnTextResult),
+    presaleDestinationUrlBreakdown: parseRows(presaleDestResult),
   };
 }

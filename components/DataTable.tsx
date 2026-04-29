@@ -112,12 +112,17 @@ export default function DataTable({ data }: DataTableProps) {
           </thead>
           <tbody className="divide-y divide-slate-200">
             {data.map((row) => {
-              const isNewsletter = row.eventName === "newsletter_signup";
+              const detailHref: Record<string, string> = {
+                newsletter_signup: "/dashboard/newsletter",
+                page_view: "/dashboard/pageview",
+                presale_click: "/dashboard/presale",
+              };
+              const href = detailHref[row.eventName];
               return (
-                <tr key={row.eventName} className={`hover:bg-slate-50 ${isNewsletter ? "group" : ""}`}>
+                <tr key={row.eventName} className={`hover:bg-slate-50 ${href ? "group" : ""}`}>
                   <td className="whitespace-nowrap px-6 py-4">
-                    {isNewsletter ? (
-                      <Link href="/dashboard/newsletter" className="flex items-center gap-3">
+                    {href ? (
+                      <Link href={href} className="flex items-center gap-3">
                         <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
                           {eventIcons[row.eventName]}
                         </div>

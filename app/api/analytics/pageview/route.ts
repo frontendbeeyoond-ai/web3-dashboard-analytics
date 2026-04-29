@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchNewsletterDetail } from "@/lib/ga4Utils";
+import { fetchPageViewDetail } from "@/lib/ga4Utils";
 import { FilterParams } from "@/types/analytics";
 
 export async function GET(request: NextRequest) {
@@ -15,12 +15,12 @@ export async function GET(request: NextRequest) {
   };
 
   try {
-    const data = await fetchNewsletterDetail(filters);
+    const data = await fetchPageViewDetail(filters);
     return NextResponse.json({ source: "ga4", ...data });
   } catch (error) {
-    console.error("Newsletter analytics API error:", error);
+    console.error("Page view analytics API error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch newsletter analytics", details: String(error) },
+      { error: "Failed to fetch page view analytics", details: String(error) },
       { status: 500 }
     );
   }
