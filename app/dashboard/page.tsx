@@ -220,13 +220,7 @@ export default function DashboardPage() {
 
             {/* Behavior Charts */}
             <section className="mb-8">
-              <BehaviorCharts
-                scrollData={data.charts.scrollDepth}
-                sessionData={data.charts.usersOverTime.map((d) => ({
-                  date: d.date,
-                  avgDuration: d.value,
-                }))}
-              />
+              <BehaviorCharts scrollData={data.charts.scrollDepth} />
             </section>
 
             {/* Campaign Table */}
