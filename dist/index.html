@@ -37,7 +37,7 @@
       { id: "camp_004", name: "Brand Awareness" },
       { id: "camp_005", name: "Retargeting Q1" },
     ];
-    const EVENT_TYPES = ["page_view", "presale_click", "online_shop_click", "documents_click", "newsletter_signup", "social_click", "trustpilot_click", "scroll_depth", "session_end"];
+    const EVENT_TYPES = ["page_view", "presale_click_cta", "online_shop_click", "documents_click", "newsletter_signup", "social_click", "trustpilot_click", "scroll_depth", "session_end"];
 
     function weightedRandom(items, weights) {
       const total = weights.reduce((a, b) => a + b, 0);
@@ -145,7 +145,7 @@
       const totalUsers = sessions.size;
       const pageViews = events.filter(e => e.event_name === "page_view").length;
 
-      const presaleClicks = events.filter(e => e.event_name === "presale_click").length;
+      const presaleClicks = events.filter(e => e.event_name === "presale_click_cta").length;
       const presaleCTR = pageViews > 0 ? (presaleClicks / pageViews) * 100 : 0;
 
       const signups = events.filter(e => e.event_name === "newsletter_signup" && e.signup_status === "success").length;
@@ -222,7 +222,7 @@
         if (!campaigns[e.campaign_name]) campaigns[e.campaign_name] = { impressions: 0, clicks: 0, conversions: 0 };
         campaigns[e.campaign_name].impressions++;
       });
-      events.filter(e => ["presale_click", "online_shop_click", "documents_click"].includes(e.event_name) && e.campaign_name).forEach(e => {
+      events.filter(e => ["presale_click_cta", "online_shop_click", "documents_click"].includes(e.event_name) && e.campaign_name).forEach(e => {
         if (campaigns[e.campaign_name]) campaigns[e.campaign_name].clicks++;
       });
       events.filter(e => e.event_name === "newsletter_signup" && e.signup_status === "success" && e.campaign_name).forEach(e => {
@@ -452,7 +452,7 @@
       if (!data.length) return '<div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200"><h3 class="text-lg font-semibold">Events Overview</h3><p class="text-slate-500">No data available</p></div>';
       const labels = {
         page_view: "Page View",
-        presale_click: "Presale Click",
+        presale_click_cta: "Presale Click",
         online_shop_click: "Online Shop Click",
         documents_click: "Documents Click",
         newsletter_signup: "Newsletter Signup",

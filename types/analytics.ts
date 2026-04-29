@@ -2,7 +2,7 @@
 export type DeviceType = "mobile" | "desktop" | "tablet";
 export type EventName =
   | "page_view"
-  | "presale_click"
+  | "presale_click_cta"
   | "online_shop_click"
   | "documents_click"
   | "newsletter_signup"
@@ -212,6 +212,7 @@ export interface NewsletterAnalyticsData {
   eventsPerActiveUser: number;
   eventsPerSession: number;
   sessions: number;
+  eventsLast30Min: number;
   eventsOverTime: ChartDataPoint[];
   signupStatus: NewsletterBreakdownRow[];
   signupLocation: NewsletterBreakdownRow[];
@@ -228,12 +229,56 @@ export interface PresaleAnalyticsData {
   eventsPerActiveUser: number;
   eventsPerSession: number;
   sessions: number;
+  eventsLast30Min: number;
   eventsOverTime: ChartDataPoint[];
   countryBreakdown: NewsletterBreakdownRow[];
   ctaLocationBreakdown: NewsletterBreakdownRow[];
   destinationUrlBreakdown: NewsletterBreakdownRow[];
   buttonTextBreakdown: NewsletterBreakdownRow[];
   presaleDestinationUrlBreakdown: NewsletterBreakdownRow[];
+}
+
+// ============== Trustpilot Click Detail Types ==============
+
+export interface TrustpilotAnalyticsData {
+  totalEvents: number;
+  totalUsers: number;
+  eventsPerSession: number;
+  sessions: number;
+  eventsLast30Min: number;
+  eventsOverTime: ChartDataPoint[];
+}
+
+// ============== Online Shop Click Detail Types ==============
+
+export interface OnlineShopAnalyticsData {
+  totalEvents: number;
+  totalUsers: number;
+  activeUsers: number;
+  eventsPerActiveUser: number;
+  eventsPerSession: number;
+  sessions: number;
+  eventsLast30Min: number;
+  eventsOverTime: ChartDataPoint[];
+  countryBreakdown: NewsletterBreakdownRow[];
+  destinationUrlBreakdown: NewsletterBreakdownRow[];
+  buttonTextBreakdown: NewsletterBreakdownRow[];
+}
+
+// ============== Documents Click Detail Types ==============
+
+export interface DocumentsAnalyticsData {
+  totalEvents: number;
+  totalUsers: number;
+  activeUsers: number;
+  eventsPerActiveUser: number;
+  eventsPerSession: number;
+  sessions: number;
+  eventsLast30Min: number;
+  eventsOverTime: ChartDataPoint[];
+  clickLocationBreakdown: NewsletterBreakdownRow[];
+  destinationPageBreakdown: NewsletterBreakdownRow[];
+  ctaNameBreakdown: NewsletterBreakdownRow[];
 }
 
 // ============== Page View Detail Types ==============

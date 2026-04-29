@@ -26,7 +26,7 @@ export function calculatePresaleCTR(events: AnalyticsEvent[]): number {
   const pageViews = calculatePageViews(events);
   if (pageViews === 0) return 0;
 
-  const presaleClicks = events.filter((e) => e.event_name === "presale_click").length;
+  const presaleClicks = events.filter((e) => e.event_name === "presale_click_cta").length;
   return (presaleClicks / pageViews) * 100;
 }
 
@@ -161,7 +161,7 @@ export function calculateCampaignPerformance(events: AnalyticsEvent[]): Campaign
   }> = {};
 
   const clickEvents = events.filter((e) =>
-    ["presale_click", "online_shop_click", "documents_click", "social_click", "trustpilot_click"].includes(e.event_name)
+    ["presale_click_cta", "online_shop_click", "documents_click", "social_click", "trustpilot_click"].includes(e.event_name)
   );
 
   const conversionEvents = events.filter((e) => e.event_name === "newsletter_signup" && e.signup_status === "success");
@@ -212,7 +212,7 @@ export function calculateCampaignPerformance(events: AnalyticsEvent[]): Campaign
 export function calculateEventCounts(events: AnalyticsEvent[]): EventCountData[] {
   const eventTypes: EventName[] = [
     "page_view",
-    "presale_click",
+    "presale_click_cta",
     "online_shop_click",
     "documents_click",
     "newsletter_signup",
@@ -249,7 +249,7 @@ export function calculateFunnelData(events: AnalyticsEvent[]): FunnelStep[] {
       .filter((e) => e.event_name === "scroll_depth" && (e.scroll_percentage || 0) >= 50)
       .map((e) => e.session_id)
   ).size;
-  const presaleClicks = events.filter((e) => e.event_name === "presale_click").length;
+  const presaleClicks = events.filter((e) => e.event_name === "presale_click_cta").length;
   const newsletterSignups = events.filter(
     (e) => e.event_name === "newsletter_signup" && e.signup_status === "success"
   ).length;

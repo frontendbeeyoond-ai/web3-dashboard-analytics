@@ -232,7 +232,7 @@ export default function DashboardPage() {
 
             {/* Events Table */}
             <section className="mb-8">
-              <DataTable data={data.events} />
+              <DataTable data={data.events} filters={filters} />
             </section>
           </>
         ) : (

@@ -12,7 +12,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { NewsletterAnalyticsData, NewsletterBreakdownRow } from "@/types/analytics";
+import { DocumentsAnalyticsData } from "@/types/analytics";
 import RealtimeSection from "@/components/RealtimeSection";
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
@@ -29,10 +29,10 @@ function KPICard({
   return (
     <div
       className={`rounded-xl p-6 shadow-sm ring-1 ${
-        highlight ? "bg-blue-600 ring-blue-500" : "bg-white ring-slate-200"
+        highlight ? "bg-indigo-600 ring-indigo-500" : "bg-white ring-slate-200"
       }`}
     >
-      <p className={`text-xs font-medium uppercase tracking-wider ${highlight ? "text-blue-100" : "text-slate-500"}`}>
+      <p className={`text-xs font-medium uppercase tracking-wider ${highlight ? "text-indigo-100" : "text-slate-500"}`}>
         {label}
       </p>
       <p className={`mt-2 text-3xl font-bold ${highlight ? "text-white" : "text-slate-900"}`}>{value}</p>
@@ -40,16 +40,76 @@ function KPICard({
   );
 }
 
-// ─── Breakdown Table ───────────────────────────────────────────────────────────
+// ─── Events Over Time Chart ────────────────────────────────────────────────────
 
-interface BreakdownTableProps {
-  title: string;
-  rows: NewsletterBreakdownRow[];
-  dimensionLabel: string;
-  totalEvents: number;
+function EventsOverTimeChart({ data }: { data: { date: string; value: number }[] }) {
+  if (!data || data.length === 0) return null;
+  const formatted = data.map((d) => ({ ...d, label: d.date.slice(5) }));
+
+  return (
+    <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-700">
+        Document Clicks Over Time
+      </h3>
+      <p className="mt-1 text-xs text-slate-400">Daily event count</p>
+      <div className="mt-4 h-52">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={formatted} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 11, fill: "#94a3b8" }}
+              axisLine={false}
+              tickLine={false}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: "#94a3b8" }}
+              axisLine={false}
+              tickLine={false}
+              allowDecimals={false}
+            />
+            <Tooltip
+              contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "12px" }}
+              labelFormatter={(l) => `Date: ${l}`}
+              formatter={(v: number) => [v.toLocaleString(), "Document Clicks"]}
+            />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="#6366F1"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
 }
 
-function BreakdownTable({ title, rows, dimensionLabel, totalEvents }: BreakdownTableProps) {
+// ─── Breakdown Table ───────────────────────────────────────────────────────────
+
+interface BreakdownRow {
+  dimension: string;
+  eventCount: number;
+  totalUsers: number;
+}
+
+function BreakdownTable({
+  title,
+  dimensionLabel,
+  rows,
+  totalEvents,
+  truncate,
+}: {
+  title: string;
+  dimensionLabel: string;
+  rows: BreakdownRow[];
+  totalEvents: number;
+  truncate?: boolean;
+}) {
   const [selected, setSelected] = useState<string | null>(null);
 
   if (!rows || rows.length === 0) {
@@ -74,10 +134,10 @@ function BreakdownTable({ title, rows, dimensionLabel, totalEvents }: BreakdownT
                 {dimensionLabel}
               </th>
               <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
-                Number of Events
+                Events
               </th>
               <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
-                Total Users
+                Users
               </th>
               <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
                 % Share
@@ -88,25 +148,29 @@ function BreakdownTable({ title, rows, dimensionLabel, totalEvents }: BreakdownT
             {rows.map((row) => {
               const isSelected = selected === row.dimension;
               const share =
-                totalEvents > 0
-                  ? ((row.eventCount / totalEvents) * 100).toFixed(1)
-                  : "0.0";
+                totalEvents > 0 ? ((row.eventCount / totalEvents) * 100).toFixed(1) : "0.0";
+              const displayLabel =
+                truncate && row.dimension.length > 48
+                  ? row.dimension.slice(0, 46) + "…"
+                  : row.dimension;
+
               return (
                 <tr
                   key={row.dimension}
                   onClick={() => setSelected(isSelected ? null : row.dimension)}
+                  title={truncate ? row.dimension : undefined}
                   className={`cursor-pointer transition-colors ${
                     isSelected
-                      ? "bg-blue-50 ring-1 ring-inset ring-blue-200"
+                      ? "bg-indigo-50 ring-1 ring-inset ring-indigo-200"
                       : "hover:bg-slate-50"
                   }`}
                 >
                   <td className="px-5 py-3 font-medium text-slate-900">
                     <div className="flex items-center gap-2">
                       {isSelected && (
-                        <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                        <span className="h-2 w-2 flex-shrink-0 rounded-full bg-indigo-500" />
                       )}
-                      <span>{row.dimension}</span>
+                      <span className="break-all">{displayLabel}</span>
                     </div>
                   </td>
                   <td className="px-5 py-3 text-right font-semibold text-slate-900">
@@ -119,7 +183,7 @@ function BreakdownTable({ title, rows, dimensionLabel, totalEvents }: BreakdownT
                     <div className="flex items-center justify-end gap-2">
                       <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
                         <div
-                          className="h-full rounded-full bg-blue-500"
+                          className="h-full rounded-full bg-indigo-500"
                           style={{ width: `${Math.min(parseFloat(share), 100)}%` }}
                         />
                       </div>
@@ -136,76 +200,10 @@ function BreakdownTable({ title, rows, dimensionLabel, totalEvents }: BreakdownT
   );
 }
 
-// ─── Events Over Time Chart ────────────────────────────────────────────────────
-
-function EventsOverTimeChart({ data }: { data: { date: string; value: number }[] }) {
-  if (!data || data.length === 0) {
-    return (
-      <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-700">
-          Newsletter Signups Over Time
-        </h3>
-        <p className="mt-6 text-center text-sm text-slate-400">No data available</p>
-      </div>
-    );
-  }
-
-  const formatted = data.map((d) => ({
-    ...d,
-    label: d.date.slice(5), // show MM-DD
-  }));
-
-  return (
-    <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-700">
-        Newsletter Signups Over Time
-      </h3>
-      <p className="mt-1 text-xs text-slate-400">Daily event count</p>
-      <div className="mt-4 h-56">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={formatted} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              axisLine={false}
-              tickLine={false}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip
-              contentStyle={{
-                borderRadius: "8px",
-                border: "1px solid #e2e8f0",
-                fontSize: "12px",
-              }}
-              labelFormatter={(l) => `Date: ${l}`}
-              formatter={(v: number) => [v.toLocaleString(), "Events"]}
-            />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke="#3B82F6"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
-export default function NewsletterAnalyticsPage() {
-  const [data, setData] = useState<NewsletterAnalyticsData | null>(null);
+export default function DocumentsAnalyticsPage() {
+  const [data, setData] = useState<DocumentsAnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -218,10 +216,12 @@ export default function NewsletterAnalyticsPage() {
       setError(null);
       try {
         const qs = searchParams.toString();
-        const res = await fetch(`/api/analytics/newsletter${qs ? `?${qs}` : ""}`, { cache: "no-store" });
+        const res = await fetch(`/api/analytics/documents${qs ? `?${qs}` : ""}`, {
+          cache: "no-store",
+        });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body.details || body.error || "Failed to fetch newsletter analytics");
+          throw new Error(body.details || body.error || "Failed to fetch documents analytics");
         }
         const json = await res.json();
         setData(json);
@@ -253,13 +253,13 @@ export default function NewsletterAnalyticsPage() {
               </Link>
               <div className="h-5 w-px bg-slate-200" />
               <div className="flex items-center gap-2.5">
-                <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
+                <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-slate-900">newsletter_signup</h1>
+                  <h1 className="text-xl font-bold text-slate-900">documents_click</h1>
                   <p className="text-xs text-slate-500">
                     Live from Google Analytics 4
                     {lastFetched && ` · updated ${lastFetched.toLocaleTimeString()}`}
@@ -288,31 +288,29 @@ export default function NewsletterAnalyticsPage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Error */}
         {error && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        {/* Loading */}
         {isLoading && !data && (
           <div className="flex flex-col items-center justify-center py-24">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
-            <p className="mt-4 text-sm text-slate-500">Loading newsletter analytics…</p>
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+            <p className="mt-4 text-sm text-slate-500">Loading documents analytics…</p>
           </div>
         )}
 
         {data && (
           <>
-            {/* KPI Cards */}
-            <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* KPI Row 1 */}
+            <section className="mb-8 grid gap-4 sm:grid-cols-3">
               <KPICard label="Number of Events" value={data.totalEvents.toLocaleString()} />
               <KPICard label="Total Users" value={data.totalUsers.toLocaleString()} />
-              <KPICard label="Active Users" value={data.activeUsers.toLocaleString()} />
               <KPICard label="Events per Active User" value={data.eventsPerActiveUser} />
             </section>
 
+            {/* KPI Row 2 */}
             <section className="mb-8 grid gap-4 sm:grid-cols-3">
               <KPICard
                 label="Events of the Last 30 Minutes"
@@ -323,43 +321,39 @@ export default function NewsletterAnalyticsPage() {
               <KPICard label="Total Sessions" value={data.sessions.toLocaleString()} />
             </section>
 
-            {/* Events over time chart */}
+            {/* Events over time */}
             <section className="mb-8">
               <EventsOverTimeChart data={data.eventsOverTime} />
             </section>
 
             {/* Realtime report */}
             <section className="mb-8">
-              <RealtimeSection eventName="newsletter_signup" accentColor="blue" />
+              <RealtimeSection eventName="documents_click" accentColor="indigo" />
             </section>
 
-            {/* Breakdown tables — 2-column grid */}
+            {/* Click Location + Destination Page */}
             <section className="mb-8 grid gap-6 lg:grid-cols-2">
               <BreakdownTable
-                title="Signup Status"
-                rows={data.signupStatus}
-                dimensionLabel="Status"
-                totalEvents={data.totalEvents}
-              />
-              <BreakdownTable
-                title="Signup Location"
-                rows={data.signupLocation}
+                title="Click Location"
                 dimensionLabel="Location"
+                rows={data.clickLocationBreakdown}
                 totalEvents={data.totalEvents}
+              />
+              <BreakdownTable
+                title="Destination Page"
+                dimensionLabel="Page"
+                rows={data.destinationPageBreakdown}
+                totalEvents={data.totalEvents}
+                truncate
               />
             </section>
 
-            <section className="mb-8 grid gap-6 lg:grid-cols-2">
+            {/* CTA Name — full width */}
+            <section className="mb-8">
               <BreakdownTable
-                title="Country"
-                rows={data.countryBreakdown}
-                dimensionLabel="Country"
-                totalEvents={data.totalEvents}
-              />
-              <BreakdownTable
-                title="E-mail"
-                rows={data.emailBreakdown}
-                dimensionLabel="E-mail"
+                title="CTA Name"
+                dimensionLabel="CTA Name"
+                rows={data.ctaNameBreakdown}
                 totalEvents={data.totalEvents}
               />
             </section>

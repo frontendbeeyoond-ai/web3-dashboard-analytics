@@ -127,7 +127,7 @@ function generateEvent(sessionId: string): AnalyticsEvent {
 
   const eventTypes: EventName[] = [
     "page_view",
-    "presale_click",
+    "presale_click_cta",
     "online_shop_click",
     "documents_click",
     "newsletter_signup",
@@ -158,7 +158,7 @@ function generateEvent(sessionId: string): AnalyticsEvent {
 
   // Add event-specific properties
   switch (eventName) {
-    case "presale_click":
+    case "presale_click_cta":
     case "online_shop_click":
     case "documents_click":
     case "social_click":

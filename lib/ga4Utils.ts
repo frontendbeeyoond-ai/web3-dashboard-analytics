@@ -1,5 +1,5 @@
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
-import { FilterParams, NewsletterAnalyticsData, PageViewAnalyticsData, PresaleAnalyticsData } from "@/types/analytics";
+import { DocumentsAnalyticsData, FilterParams, NewsletterAnalyticsData, OnlineShopAnalyticsData, PageViewAnalyticsData, PresaleAnalyticsData, TrustpilotAnalyticsData } from "@/types/analytics";
 
 // Initialize GA4 client with service account
 let analyticsClient: BetaAnalyticsDataClient | null = null;
@@ -115,7 +115,7 @@ export async function fetchEventCounts(filters: FilterParams) {
 
   const eventNames = [
     "page_view",
-    "presale_click",
+    "presale_click_cta",
     "online_shop_click",
     "documents_click",
     "newsletter_signup",
@@ -157,7 +157,7 @@ export function calculateCTRs(
   eventCounts: Record<string, number>,
   pageViews: number
 ) {
-  const presaleClicks = eventCounts["presale_click"] || 0;
+  const presaleClicks = eventCounts["presale_click_cta"] || 0;
   const shopClicks = eventCounts["online_shop_click"] || 0;
   const documentsClicks = eventCounts["documents_click"] || 0;
   const newsletterSignups = eventCounts["newsletter_signup"] || 0;
@@ -459,7 +459,7 @@ export async function fetchFunnelData(filters: FilterParams) {
         fieldName: "eventName",
         stringFilter: {
           matchType: "EXACT",
-          value: "presale_click",
+          value: "presale_click_cta",
         },
       },
     },
@@ -538,7 +538,7 @@ export async function fetchAllGA4Data(filters: FilterParams) {
     // Build event counts array
     const eventNames = [
       "page_view",
-      "presale_click",
+      "presale_click_cta",
       "online_shop_click",
       "documents_click",
       "newsletter_signup",
@@ -730,6 +730,24 @@ export async function fetchNewsletterDetail(filters: FilterParams): Promise<News
     value: parseInt(row.metricValues?.[0]?.value || "0", 10),
   }));
 
+  // Realtime — isolated so failures don't crash the page
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let realtimeResult: any = null;
+  try {
+    realtimeResult = await client.runRealtimeReport({
+      property: `properties/${propertyId}`,
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: eventFilter,
+      minuteRanges: [{ name: "last30min", startMinutesAgo: 29, endMinutesAgo: 0 }],
+    });
+  } catch { /* realtime unavailable — silently fall back to 0 */ }
+
+  const realtimeRows = realtimeResult?.[0]?.rows || [];
+  const eventsLast30Min = realtimeRows.reduce(
+    (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0", 10),
+    0
+  );
+
   return {
     totalEvents,
     totalUsers,
@@ -737,6 +755,7 @@ export async function fetchNewsletterDetail(filters: FilterParams): Promise<News
     eventsPerActiveUser: activeUsers > 0 ? Math.round((totalEvents / activeUsers) * 10) / 10 : 0,
     eventsPerSession: sessions > 0 ? Math.round((totalEvents / sessions) * 100) / 100 : 0,
     sessions,
+    eventsLast30Min,
     eventsOverTime,
     signupStatus: parseBreakdownRows(statusResult),
     signupLocation: parseBreakdownRows(locationResult),
@@ -869,6 +888,63 @@ export async function fetchPageViewDetail(filters: FilterParams): Promise<PageVi
   };
 }
 
+// Fetch minute-by-minute realtime data for a single event (last 30 minutes)
+export interface RealtimeMinuteData {
+  minutesAgo: number;
+  count: number;
+}
+
+export interface RealtimeData {
+  total: number;
+  minuteData: RealtimeMinuteData[];
+}
+
+export async function fetchRealtimeData(eventName: string): Promise<RealtimeData> {
+  const client = getAnalyticsClient();
+  const propertyId = getPropertyId();
+
+  const eventFilter = {
+    filter: {
+      fieldName: "eventName",
+      stringFilter: { matchType: "EXACT" as const, value: eventName },
+    },
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let result: any = null;
+  try {
+    result = await client.runRealtimeReport({
+      property: `properties/${propertyId}`,
+      dimensions: [{ name: "minutesAgo" }],
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: eventFilter,
+      minuteRanges: [{ name: "last30min", startMinutesAgo: 29, endMinutesAgo: 0 }],
+    });
+  } catch {
+    // Realtime API unavailable — return zeros
+  }
+
+  // Pre-fill all 30 minutes with zero counts
+  const minuteMap: Record<number, number> = {};
+  for (let i = 0; i <= 29; i++) minuteMap[i] = 0;
+
+  const rows = result?.[0]?.rows || [];
+  rows.forEach((row: any) => {
+    const ago = parseInt(row.dimensionValues?.[0]?.value || "0", 10);
+    const count = parseInt(row.metricValues?.[0]?.value || "0", 10);
+    minuteMap[ago] = count;
+  });
+
+  // Index 0 = 29m ago (oldest), index 29 = 0m ago (newest) — left-to-right timeline
+  const minuteData: RealtimeMinuteData[] = Array.from({ length: 30 }, (_, i) => ({
+    minutesAgo: 29 - i,
+    count: minuteMap[29 - i] || 0,
+  }));
+
+  const total = Object.values(minuteMap).reduce((a, b) => a + b, 0);
+  return { total, minuteData };
+}
+
 // Fetch detailed Presale Click analytics
 export async function fetchPresaleDetail(filters: FilterParams): Promise<PresaleAnalyticsData> {
   const client = getAnalyticsClient();
@@ -878,7 +954,7 @@ export async function fetchPresaleDetail(filters: FilterParams): Promise<Presale
   const presaleFilter = {
     filter: {
       fieldName: "eventName",
-      stringFilter: { matchType: "EXACT" as const, value: "presale_click" },
+      stringFilter: { matchType: "EXACT" as const, value: "presale_click_cta" },
     },
   };
 
@@ -952,6 +1028,24 @@ export async function fetchPresaleDetail(filters: FilterParams): Promise<Presale
     value: parseInt(row.metricValues?.[0]?.value || "0", 10),
   }));
 
+  // Realtime — isolated so failures don't crash the page
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let realtimeResult: any = null;
+  try {
+    realtimeResult = await client.runRealtimeReport({
+      property: `properties/${propertyId}`,
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: presaleFilter,
+      minuteRanges: [{ name: "last30min", startMinutesAgo: 29, endMinutesAgo: 0 }],
+    });
+  } catch { /* realtime unavailable — silently fall back to 0 */ }
+
+  const realtimeRows = realtimeResult?.[0]?.rows || [];
+  const eventsLast30Min = realtimeRows.reduce(
+    (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0", 10),
+    0
+  );
+
   return {
     totalEvents,
     totalUsers,
@@ -959,11 +1053,302 @@ export async function fetchPresaleDetail(filters: FilterParams): Promise<Presale
     eventsPerActiveUser: activeUsers > 0 ? Math.round((totalEvents / activeUsers) * 10) / 10 : 0,
     eventsPerSession: sessions > 0 ? Math.round((totalEvents / sessions) * 100) / 100 : 0,
     sessions,
+    eventsLast30Min,
     eventsOverTime,
     countryBreakdown: parseRows(countryResult).slice(0, 15),
     ctaLocationBreakdown: parseRows(ctaResult),
     destinationUrlBreakdown: parseRows(destUrlResult),
     buttonTextBreakdown: parseRows(btnTextResult),
     presaleDestinationUrlBreakdown: parseRows(presaleDestResult),
+  };
+}
+
+// Fetch detailed Online Shop Click analytics
+export async function fetchOnlineShopDetail(filters: FilterParams): Promise<OnlineShopAnalyticsData> {
+  const client = getAnalyticsClient();
+  const propertyId = getPropertyId();
+  const { startDate, endDate } = buildDateRange(filters);
+
+  const shopFilter = {
+    filter: {
+      fieldName: "eventName",
+      stringFilter: { matchType: "EXACT" as const, value: "online_shop_click" },
+    },
+  };
+
+  function parseRows(result: any): { dimension: string; eventCount: number; totalUsers: number }[] {
+    const rows = result?.[0]?.rows || [];
+    return rows.map((row: any) => ({
+      dimension: row.dimensionValues?.[0]?.value || "unknown",
+      eventCount: parseInt(row.metricValues?.[0]?.value || "0", 10),
+      totalUsers: parseInt(row.metricValues?.[1]?.value || "0", 10),
+    }));
+  }
+
+  function customDimReport(dimension: string) {
+    return settle(
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: dimension }],
+        metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+        dimensionFilter: shopFilter,
+        orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      [null] as any
+    );
+  }
+
+  const [kpiResult, overTimeResult, countryResult, destUrlResult, btnTextResult] =
+    await Promise.all([
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        metrics: [
+          { name: "eventCount" },
+          { name: "totalUsers" },
+          { name: "activeUsers" },
+          { name: "sessions" },
+        ],
+        dimensionFilter: shopFilter,
+      }),
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "date" }],
+        metrics: [{ name: "eventCount" }],
+        dimensionFilter: shopFilter,
+        orderBys: [{ dimension: { dimensionName: "date" } }],
+      }),
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "country" }],
+        metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+        dimensionFilter: shopFilter,
+        orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      }),
+      customDimReport("customEvent:destination_url"),
+      customDimReport("customEvent:button_text"),
+    ]);
+
+  const kpiRow = kpiResult?.[0]?.rows?.[0]?.metricValues;
+  const totalEvents = parseInt(kpiRow?.[0]?.value || "0", 10);
+  const totalUsers = parseInt(kpiRow?.[1]?.value || "0", 10);
+  const activeUsers = parseInt(kpiRow?.[2]?.value || "0", 10);
+  const sessions = parseInt(kpiRow?.[3]?.value || "0", 10);
+
+  const eventsOverTime = (overTimeResult?.[0]?.rows || []).map((row: any) => ({
+    date: formatDate(row.dimensionValues?.[0]?.value || ""),
+    value: parseInt(row.metricValues?.[0]?.value || "0", 10),
+  }));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let realtimeResult: any = null;
+  try {
+    realtimeResult = await client.runRealtimeReport({
+      property: `properties/${propertyId}`,
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: shopFilter,
+      minuteRanges: [{ name: "last30min", startMinutesAgo: 29, endMinutesAgo: 0 }],
+    });
+  } catch { /* realtime unavailable */ }
+
+  const realtimeRows = realtimeResult?.[0]?.rows || [];
+  const eventsLast30Min = realtimeRows.reduce(
+    (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0", 10),
+    0
+  );
+
+  return {
+    totalEvents,
+    totalUsers,
+    activeUsers,
+    eventsPerActiveUser: activeUsers > 0 ? Math.round((totalEvents / activeUsers) * 10) / 10 : 0,
+    eventsPerSession: sessions > 0 ? Math.round((totalEvents / sessions) * 100) / 100 : 0,
+    sessions,
+    eventsLast30Min,
+    eventsOverTime,
+    countryBreakdown: parseRows(countryResult).slice(0, 15),
+    destinationUrlBreakdown: parseRows(destUrlResult),
+    buttonTextBreakdown: parseRows(btnTextResult),
+  };
+}
+
+// Fetch detailed Documents Click analytics
+export async function fetchDocumentsDetail(filters: FilterParams): Promise<DocumentsAnalyticsData> {
+  const client = getAnalyticsClient();
+  const propertyId = getPropertyId();
+  const { startDate, endDate } = buildDateRange(filters);
+
+  const docsFilter = {
+    filter: {
+      fieldName: "eventName",
+      stringFilter: { matchType: "EXACT" as const, value: "documents_click" },
+    },
+  };
+
+  function parseRows(result: any): { dimension: string; eventCount: number; totalUsers: number }[] {
+    const rows = result?.[0]?.rows || [];
+    return rows.map((row: any) => ({
+      dimension: row.dimensionValues?.[0]?.value || "unknown",
+      eventCount: parseInt(row.metricValues?.[0]?.value || "0", 10),
+      totalUsers: parseInt(row.metricValues?.[1]?.value || "0", 10),
+    }));
+  }
+
+  function customDimReport(dimension: string) {
+    return settle(
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: dimension }],
+        metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+        dimensionFilter: docsFilter,
+        orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      [null] as any
+    );
+  }
+
+  const [kpiResult, overTimeResult, clickLocationResult, destPageResult, ctaNameResult] =
+    await Promise.all([
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        metrics: [
+          { name: "eventCount" },
+          { name: "totalUsers" },
+          { name: "activeUsers" },
+          { name: "sessions" },
+        ],
+        dimensionFilter: docsFilter,
+      }),
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "date" }],
+        metrics: [{ name: "eventCount" }],
+        dimensionFilter: docsFilter,
+        orderBys: [{ dimension: { dimensionName: "date" } }],
+      }),
+      customDimReport("customEvent:click_location"),
+      customDimReport("customEvent:destination_page"),
+      customDimReport("customEvent:cta_name"),
+    ]);
+
+  const kpiRow = kpiResult?.[0]?.rows?.[0]?.metricValues;
+  const totalEvents = parseInt(kpiRow?.[0]?.value || "0", 10);
+  const totalUsers = parseInt(kpiRow?.[1]?.value || "0", 10);
+  const activeUsers = parseInt(kpiRow?.[2]?.value || "0", 10);
+  const sessions = parseInt(kpiRow?.[3]?.value || "0", 10);
+
+  const eventsOverTime = (overTimeResult?.[0]?.rows || []).map((row: any) => ({
+    date: formatDate(row.dimensionValues?.[0]?.value || ""),
+    value: parseInt(row.metricValues?.[0]?.value || "0", 10),
+  }));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let realtimeResult: any = null;
+  try {
+    realtimeResult = await client.runRealtimeReport({
+      property: `properties/${propertyId}`,
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: docsFilter,
+      minuteRanges: [{ name: "last30min", startMinutesAgo: 29, endMinutesAgo: 0 }],
+    });
+  } catch { /* realtime unavailable */ }
+
+  const realtimeRows = realtimeResult?.[0]?.rows || [];
+  const eventsLast30Min = realtimeRows.reduce(
+    (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0", 10),
+    0
+  );
+
+  return {
+    totalEvents,
+    totalUsers,
+    activeUsers,
+    eventsPerActiveUser: activeUsers > 0 ? Math.round((totalEvents / activeUsers) * 10) / 10 : 0,
+    eventsPerSession: sessions > 0 ? Math.round((totalEvents / sessions) * 100) / 100 : 0,
+    sessions,
+    eventsLast30Min,
+    eventsOverTime,
+    clickLocationBreakdown: parseRows(clickLocationResult),
+    destinationPageBreakdown: parseRows(destPageResult),
+    ctaNameBreakdown: parseRows(ctaNameResult),
+  };
+}
+
+// Fetch detailed Trustpilot Click analytics
+export async function fetchTrustpilotDetail(filters: FilterParams): Promise<TrustpilotAnalyticsData> {
+  const client = getAnalyticsClient();
+  const propertyId = getPropertyId();
+  const { startDate, endDate } = buildDateRange(filters);
+
+  const trustpilotFilter = {
+    filter: {
+      fieldName: "eventName",
+      stringFilter: { matchType: "EXACT" as const, value: "trustpilot_click" },
+    },
+  };
+
+  const [kpiResult, overTimeResult] = await Promise.all([
+    client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      metrics: [
+        { name: "eventCount" },
+        { name: "totalUsers" },
+        { name: "sessions" },
+      ],
+      dimensionFilter: trustpilotFilter,
+    }),
+    client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: "date" }],
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: trustpilotFilter,
+      orderBys: [{ dimension: { dimensionName: "date" } }],
+    }),
+  ]);
+
+  const kpiRow = kpiResult?.[0]?.rows?.[0]?.metricValues;
+  const totalEvents = parseInt(kpiRow?.[0]?.value || "0", 10);
+  const totalUsers = parseInt(kpiRow?.[1]?.value || "0", 10);
+  const sessions = parseInt(kpiRow?.[2]?.value || "0", 10);
+
+  const eventsOverTime = (overTimeResult?.[0]?.rows || []).map((row: any) => ({
+    date: formatDate(row.dimensionValues?.[0]?.value || ""),
+    value: parseInt(row.metricValues?.[0]?.value || "0", 10),
+  }));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let realtimeResult: any = null;
+  try {
+    realtimeResult = await client.runRealtimeReport({
+      property: `properties/${propertyId}`,
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: trustpilotFilter,
+      minuteRanges: [{ name: "last30min", startMinutesAgo: 29, endMinutesAgo: 0 }],
+    });
+  } catch { /* realtime unavailable */ }
+
+  const realtimeRows = realtimeResult?.[0]?.rows || [];
+  const eventsLast30Min = realtimeRows.reduce(
+    (sum: number, row: any) => sum + parseInt(row.metricValues?.[0]?.value || "0", 10),
+    0
+  );
+
+  return {
+    totalEvents,
+    totalUsers,
+    eventsPerSession: sessions > 0 ? Math.round((totalEvents / sessions) * 100) / 100 : 0,
+    sessions,
+    eventsLast30Min,
+    eventsOverTime,
   };
 }

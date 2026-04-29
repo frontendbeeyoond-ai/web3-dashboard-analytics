@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   LineChart,
   Line,
@@ -12,6 +13,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { PageViewAnalyticsData } from "@/types/analytics";
+import RealtimeSection from "@/components/RealtimeSection";
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
@@ -259,13 +261,15 @@ export default function PageViewAnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/analytics/pageview", { cache: "no-store" });
+        const qs = searchParams.toString();
+        const res = await fetch(`/api/analytics/pageview${qs ? `?${qs}` : ""}`, { cache: "no-store" });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.details || body.error || "Failed to fetch page view analytics");
@@ -280,7 +284,7 @@ export default function PageViewAnalyticsPage() {
       }
     };
     fetchData();
-  }, [refreshKey]);
+  }, [refreshKey, searchParams]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -389,6 +393,11 @@ export default function PageViewAnalyticsPage() {
             {/* Events over time */}
             <section className="mb-8">
               <EventsOverTimeChart data={data.eventsOverTime} />
+            </section>
+
+            {/* Realtime report */}
+            <section className="mb-8">
+              <RealtimeSection eventName="page_view" accentColor="purple" />
             </section>
 
             {/* User Engagement */}
