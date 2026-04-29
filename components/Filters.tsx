@@ -136,7 +136,7 @@ export default function Filters({ onFilterChange, isLoading }: FiltersProps) {
         </div>
 
         {/* Device Type */}
-        <div className="space-y-1">
+        {/* <div className="space-y-1">
           <label htmlFor="device_type" className="block text-xs font-medium text-slate-600">
             Device Type
           </label>
@@ -159,10 +159,10 @@ export default function Filters({ onFilterChange, isLoading }: FiltersProps) {
               </svg>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Traffic Source */}
-        <div className="space-y-1">
+        {/* <div className="space-y-1">
           <label htmlFor="traffic_source" className="block text-xs font-medium text-slate-600">
             Traffic Source
           </label>
@@ -185,10 +185,10 @@ export default function Filters({ onFilterChange, isLoading }: FiltersProps) {
               </svg>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Country */}
-        <div className="space-y-1">
+        {/* <div className="space-y-1">
           <label htmlFor="country" className="block text-xs font-medium text-slate-600">
             Country
           </label>
@@ -211,7 +211,7 @@ export default function Filters({ onFilterChange, isLoading }: FiltersProps) {
               </svg>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Reset Button */}
         <div className="flex items-end">

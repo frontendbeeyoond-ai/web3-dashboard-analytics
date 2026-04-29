@@ -196,3 +196,25 @@ export interface FunnelStep {
   count: number;
   percentage: number;
 }
+
+// ============== Newsletter Detail Types ==============
+
+export interface NewsletterBreakdownRow {
+  dimension: string;
+  eventCount: number;
+  totalUsers: number;
+}
+
+export interface NewsletterAnalyticsData {
+  totalEvents: number;
+  totalUsers: number;
+  activeUsers: number;
+  eventsPerActiveUser: number;
+  eventsPerSession: number;
+  sessions: number;
+  eventsOverTime: ChartDataPoint[];
+  signupStatus: NewsletterBreakdownRow[];
+  signupLocation: NewsletterBreakdownRow[];
+  emailBreakdown: NewsletterBreakdownRow[];
+  countryBreakdown: NewsletterBreakdownRow[];
+}

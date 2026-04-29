@@ -1,5 +1,5 @@
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
-import { FilterParams } from "@/types/analytics";
+import { FilterParams, NewsletterAnalyticsData } from "@/types/analytics";
 
 // Initialize GA4 client with service account
 let analyticsClient: BetaAnalyticsDataClient | null = null;
@@ -630,4 +630,117 @@ export async function fetchCampaignPerformance(filters: FilterParams) {
         conversionRate: clicks > 0 ? Math.round((conversions / clicks) * 1000) / 10 : 0,
       };
     });
+}
+
+// Fetch detailed Newsletter Signup analytics
+export async function fetchNewsletterDetail(filters: FilterParams): Promise<NewsletterAnalyticsData> {
+  const client = getAnalyticsClient();
+  const propertyId = getPropertyId();
+  const { startDate, endDate } = buildDateRange(filters);
+
+  const eventFilter = {
+    filter: {
+      fieldName: "eventName",
+      stringFilter: { matchType: "EXACT" as const, value: "newsletter_signup" },
+    },
+  };
+
+  function parseBreakdownRows(result: any): { dimension: string; eventCount: number; totalUsers: number }[] {
+    const rows = result?.[0]?.rows || [];
+    return rows.map((row: any) => ({
+      dimension: row.dimensionValues?.[0]?.value || "unknown",
+      eventCount: parseInt(row.metricValues?.[0]?.value || "0", 10),
+      totalUsers: parseInt(row.metricValues?.[1]?.value || "0", 10),
+    }));
+  }
+
+  const [kpiResult, overTimeResult, statusResult, locationResult, emailResult, countryResult] =
+    await Promise.all([
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        metrics: [
+          { name: "eventCount" },
+          { name: "totalUsers" },
+          { name: "activeUsers" },
+          { name: "sessions" },
+        ],
+        dimensionFilter: eventFilter,
+      }),
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "date" }],
+        metrics: [{ name: "eventCount" }],
+        dimensionFilter: eventFilter,
+        orderBys: [{ dimension: { dimensionName: "date" } }],
+      }),
+      settle(
+        client.runReport({
+          property: `properties/${propertyId}`,
+          dateRanges: [{ startDate, endDate }],
+          dimensions: [{ name: "customEvent:signup_status" }],
+          metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+          dimensionFilter: eventFilter,
+        }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [null] as any
+      ),
+      settle(
+        client.runReport({
+          property: `properties/${propertyId}`,
+          dateRanges: [{ startDate, endDate }],
+          dimensions: [{ name: "customEvent:signup_location" }],
+          metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+          dimensionFilter: eventFilter,
+        }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [null] as any
+      ),
+      settle(
+        client.runReport({
+          property: `properties/${propertyId}`,
+          dateRanges: [{ startDate, endDate }],
+          dimensions: [{ name: "customEvent:e-mail" }],
+          metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+          dimensionFilter: eventFilter,
+          orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+        }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [null] as any
+      ),
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: "country" }],
+        metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+        dimensionFilter: eventFilter,
+        orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+      }),
+    ]);
+
+  const kpiRow = kpiResult?.[0]?.rows?.[0]?.metricValues;
+  const totalEvents = parseInt(kpiRow?.[0]?.value || "0", 10);
+  const totalUsers = parseInt(kpiRow?.[1]?.value || "0", 10);
+  const activeUsers = parseInt(kpiRow?.[2]?.value || "0", 10);
+  const sessions = parseInt(kpiRow?.[3]?.value || "0", 10);
+
+  const eventsOverTime = (overTimeResult?.[0]?.rows || []).map((row: any) => ({
+    date: formatDate(row.dimensionValues?.[0]?.value || ""),
+    value: parseInt(row.metricValues?.[0]?.value || "0", 10),
+  }));
+
+  return {
+    totalEvents,
+    totalUsers,
+    activeUsers,
+    eventsPerActiveUser: activeUsers > 0 ? Math.round((totalEvents / activeUsers) * 10) / 10 : 0,
+    eventsPerSession: sessions > 0 ? Math.round((totalEvents / sessions) * 100) / 100 : 0,
+    sessions,
+    eventsOverTime,
+    signupStatus: parseBreakdownRows(statusResult),
+    signupLocation: parseBreakdownRows(locationResult),
+    emailBreakdown: parseBreakdownRows(emailResult),
+    countryBreakdown: parseBreakdownRows(countryResult).slice(0, 15),
+  };
 }
