@@ -219,3 +219,41 @@ export interface NewsletterAnalyticsData {
   emailBreakdown: NewsletterBreakdownRow[];
   countryBreakdown: NewsletterBreakdownRow[];
 }
+
+// ============== Presale Click Detail Types ==============
+
+export interface PresaleAnalyticsData {
+  totalEvents: number;
+  totalUsers: number;
+  activeUsers: number;
+  eventsPerActiveUser: number;
+  eventsPerSession: number;
+  sessions: number;
+  eventsOverTime: ChartDataPoint[];
+  countryBreakdown: NewsletterBreakdownRow[];
+  ctaLocationBreakdown: NewsletterBreakdownRow[];
+  destinationUrlBreakdown: NewsletterBreakdownRow[];
+  buttonTextBreakdown: NewsletterBreakdownRow[];
+  presaleDestinationUrlBreakdown: NewsletterBreakdownRow[];
+}
+
+// ============== Page View Detail Types ==============
+
+export interface PageViewAnalyticsData {
+  totalEvents: number;
+  totalUsers: number;
+  activeUsers: number;
+  eventsPerActiveUser: number;
+  eventsPerSession: number;
+  sessions: number;
+  eventsLast30Min: number;
+  // User Engagement
+  engagedSessions: number;
+  engagementRate: number;
+  avgEngagementTimeSec: number;
+  engagedSessionsPerUser: number;
+  // Charts
+  eventsOverTime: ChartDataPoint[];
+  // Country breakdown
+  countryBreakdown: NewsletterBreakdownRow[];
+}
