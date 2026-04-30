@@ -185,7 +185,7 @@ function CountryTable({
                   <td className="px-5 py-3 font-medium text-slate-900">
                     <div className="flex items-center gap-2">
                       {isSelected && (
-                        <span className="h-2 w-2 flex-shrink-0 rounded-full bg-blue-500" />
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
                       )}
                       {row.dimension}
                     </div>
@@ -413,5 +413,13 @@ function PageViewAnalyticsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function PageViewPage() {
+  return (
+    <Suspense>
+      <PageViewAnalyticsPage />
+    </Suspense>
   );
 }

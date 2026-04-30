@@ -168,7 +168,7 @@ function BreakdownTable({
                   <td className="px-5 py-3 font-medium text-slate-900">
                     <div className="flex items-center gap-2">
                       {isSelected && (
-                        <span className="h-2 w-2 flex-shrink-0 rounded-full bg-indigo-500" />
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-indigo-500" />
                       )}
                       <span className="break-all">{displayLabel}</span>
                     </div>
@@ -361,5 +361,13 @@ function DocumentsAnalyticsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function DocumentsPage() {
+  return (
+    <Suspense>
+      <DocumentsAnalyticsPage />
+    </Suspense>
   );
 }

@@ -224,3 +224,11 @@ function TrustpilotAnalyticsPage() {
     </div>
   );
 }
+
+export default function TrustpilotPage() {
+  return (
+    <Suspense>
+      <TrustpilotAnalyticsPage />
+    </Suspense>
+  );
+}

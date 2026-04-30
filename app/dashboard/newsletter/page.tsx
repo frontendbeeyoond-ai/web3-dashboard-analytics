@@ -104,7 +104,7 @@ function BreakdownTable({ title, rows, dimensionLabel, totalEvents }: BreakdownT
                   <td className="px-5 py-3 font-medium text-slate-900">
                     <div className="flex items-center gap-2">
                       {isSelected && (
-                        <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                        <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
                       )}
                       <span>{row.dimension}</span>
                     </div>
@@ -367,5 +367,13 @@ function NewsletterAnalyticsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function NewsletterPage() {
+  return (
+    <Suspense>
+      <NewsletterAnalyticsPage />
+    </Suspense>
   );
 }
